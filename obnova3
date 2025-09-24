@@ -1,0 +1,606 @@
+repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
+
+local useNormalGui = true
+local TG_LINK = "https://t.me/hubixrbx"
+
+--========================= безопасный родитель =========================
+local function getSafeGuiParent()
+    local ok, ui = pcall(function()
+        if gethui then return gethui() end
+        return game:GetService("CoreGui")
+    end)
+    if ok and ui then return ui end
+    return game.Players.LocalPlayer:WaitForChild("PlayerGui")
+end
+
+local function protect(g)
+    pcall(function()
+        if syn and syn.protect_gui then syn.protect_gui(g) end
+        if gethui and not g.Parent then g.Parent = gethui() end
+    end)
+end
+
+local parent = getSafeGuiParent()
+local sg = Instance.new("ScreenGui")
+sg.Name = "VVW_Loader_UI"
+sg.ResetOnSpawn = false
+sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+protect(sg)
+sg.Parent = parent
+
+--============================== утилы ==============================
+local TweenService = game:GetService("TweenService")
+local UIS = game:GetService("UserInputService")
+
+local function notify(title, text, dur)
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = title or "Info",
+            Text  = text or "",
+            Duration = dur or 4
+        })
+    end)
+end
+
+local function copyToClipboard(text)
+    local ok
+    pcall(function()
+        if setclipboard then setclipboard(text); ok = true end
+        if syn and syn.set_clipboard then syn.set_clipboard(text); ok = true end
+    end)
+    return ok
+end
+
+local function tryOpenBrowser(url)
+    pcall(function()
+        if _G.openBrowser then _G.openBrowser(url) end
+        if openbrowser then openbrowser(url) end
+        if browser_open then browser_open(url) end
+        if syn and syn.request then syn.request({ Url = url, Method = "GET" }) end
+    end)
+end
+
+--============================= данные =============================
+local HUB_DATA = {
+    {
+        mode = "99nightintheforest",
+        scripts = {
+            { name = "🔥VoidWare🔥", badge = "🔑 no key", run = function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/VapeVoidware/VW-Add/main/nightsintheforest.lua", true))()
+            end },
+            { name = "Up🌎🔝", badge = "🔑 no key", run = function()
+                loadstring(game:HttpGet("https://pastebin.com/raw/5PqzEXBQ"))()
+            end },
+            { name = "Invisible👻", badge = "🔑 no key", run = function()
+                loadstring(game:HttpGet('https://pastebin.com/raw/3Rnd9rHf'))()("t.me/OnilegoScript")
+            end },
+            { name = "Farm💎 Only📲", badge = "🔑 no key", run = function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/Rx1m/CpsHub/refs/heads/main/CpsX", true))()
+            end },
+        }
+    },
+    {
+        mode = "Steal a Brainrot",
+        scripts = {
+            { name = "ALGOL", badge = "🔑 no key", run = function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/marcelosero7-cyber/Steal-updated/refs/heads/main/Algolboosters"))()
+            end }
+        }
+    },
+    {
+        mode = "Murder Mystery 2",
+        scripts = {
+            { name = "Thunder", badge = "🔑 no key", run = function()
+                loadstring(game:HttpGet('https://raw.githubusercontent.com/Roman34296589/SnapSanixHUB/refs/heads/main/SnapSanixHUB.lua'))()
+            end }
+        }
+    },
+    {
+        mode = "Fish",
+        scripts = {
+            { name = "Vinz", badge = "🔑 no key", run = function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/Vinzyy13/VinzHub/refs/heads/main/Fish-It"))()
+            end }
+        }
+    },
+    {
+        mode = "Grow a Garden",
+        scripts = {
+            { name = "H4x", badge = "🔑 no key", run = function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/H4xScripts/Loader/refs/heads/main/loader2.lua"))()
+            end }
+        }
+    },
+}
+
+--======================== блокировка запуска =======================
+local globalBusy = false
+local allStartButtons = {}
+
+local function setButtonsEnabled(enabled)
+    for _, b in ipairs(allStartButtons) do
+        b.Active = enabled
+        b.AutoButtonColor = enabled
+        b.BackgroundColor3 = enabled and Color3.fromRGB(130, 235, 155) or Color3.fromRGB(190, 190, 190)
+    end
+end
+
+local function runCountdown(btn, onComplete)
+    if globalBusy then return end
+    globalBusy = true
+    setButtonsEnabled(false)
+    local orig = btn.Text
+    for t = 10, 1, -1 do
+        btn.Text = ("Запуск... %d"):format(t)
+        task.wait(1)
+    end
+    btn.Text = "Запуск..."
+    pcall(function() if typeof(onComplete) == "function" then onComplete() end end)
+    notify("Выполнено", "Операция завершена.")
+    btn.Text = orig
+    globalBusy = false
+    setButtonsEnabled(true)
+end
+
+--========================== лейаут ==========================
+local function viewport()
+    local cam = workspace.CurrentCamera
+    return cam and cam.ViewportSize or Vector2.new(1280, 720)
+end
+
+local function computeMainFrameSize()
+    local vp = viewport()
+    local isPhone = UIS.TouchEnabled and vp.Y <= 900
+    if isPhone then
+        local h = math.clamp(52 + 22 + 20 + 56*2 + 50, 240, math.floor(vp.Y*0.48))
+        local w = math.min(440, math.floor(vp.X*0.92))
+        return UDim2.fromOffset(w, h), true
+    else
+        return UDim2.fromOffset(440, 540), false
+    end
+end
+
+local function maxBodyHeight()
+    local vp = viewport()
+    return UIS.TouchEnabled and math.floor(vp.Y*0.45) or math.floor(vp.Y*0.33)
+end
+
+local function clampToScreen(frame, pos)
+    local vp = viewport()
+    return UDim2.new(
+        0, math.clamp(pos.X, 0, math.max(0, vp.X - frame.Size.X.Offset)),
+        0, math.clamp(pos.Y, 0, math.max(0, vp.Y - frame.Size.Y.Offset))
+    )
+end
+
+--======================== универсальный DRAG =======================
+-- 1) тянем за края
+-- 2) long press 0.3s в любом месте
+local function enableDrag(frame, edgeThickness)
+    edgeThickness = edgeThickness or 14
+    frame.Active = true
+    frame.ClipsDescendants = false
+
+    local function startDrag(input)
+        local startPos = frame.AbsolutePosition
+        local start = input.Position
+        local ended = false
+        local ch; ch = input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                ended = true
+                if ch then ch:Disconnect() end
+            end
+        end)
+        local function onMove(i)
+            if ended then return end
+            if i ~= input then return end
+            local delta = i.Position - start
+            frame.Position = clampToScreen(frame, startPos + delta)
+        end
+        local moveConn
+        moveConn = UIS.InputChanged:Connect(function(i)
+            if i == input then onMove(i) end
+        end)
+        task.spawn(function()
+            repeat task.wait() until ended
+            if moveConn then moveConn:Disconnect() end
+        end)
+    end
+
+    -- рамки-области
+    local edges = {}
+    local function makeEdge(name, pos, size)
+        local b = Instance.new("TextButton")
+        b.Name = name
+        b.Text = ""
+        b.BackgroundTransparency = 1
+        b.AutoButtonColor = false
+        b.ZIndex = 1000
+        b.Active = true
+        b.Selectable = false
+        b.Size = size
+        b.Position = pos
+        b.Parent = frame
+        b.MouseButton1Down:Connect(function(x, y) startDrag({Position = Vector2.new(x,y), UserInputState = Enum.UserInputState.Begin}) end)
+        b.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+                startDrag(input)
+            end
+        end)
+        table.insert(edges, b)
+    end
+
+    local thick = edgeThickness
+    makeEdge("TopEdge",    UDim2.new(0,0,0,0),               UDim2.new(1,0,0,thick))
+    makeEdge("BottomEdge", UDim2.new(0,0,1,-thick),          UDim2.new(1,0,0,thick))
+    makeEdge("LeftEdge",   UDim2.new(0,0,0,0),               UDim2.new(0,thick,1,0))
+    makeEdge("RightEdge",  UDim2.new(1,-thick,0,0),          UDim2.new(0,thick,1,0))
+
+    -- long press по любой точке окна
+    if UIS.TouchEnabled then
+        frame.InputBegan:Connect(function(input)
+            if input.UserInputType ~= Enum.UserInputType.Touch then return end
+            local this = input
+            task.delay(0.30, function()
+                if this.UserInputState == Enum.UserInputState.Begin then
+                    startDrag(this)
+                end
+            end)
+        end)
+    else
+        -- на ПК просто зажми ЛКМ на 0.30с куда угодно
+        frame.InputBegan:Connect(function(input)
+            if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+            local this = input
+            task.delay(0.30, function()
+                if this.UserInputState == Enum.UserInputState.Begin then
+                    startDrag(this)
+                end
+            end)
+        end)
+    end
+end
+
+--======================== основной GUI ======================
+local function createMainGui()
+    local frame = Instance.new("Frame")
+    frame.Name = "Container"
+    local size, compactMobile = computeMainFrameSize()
+    frame.Size = size
+    frame.Position = UDim2.fromScale(0.5, 0.5)
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    frame.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
+    frame.BorderSizePixel = 0
+    frame.Parent = sg
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 14)
+    local stroke = Instance.new("UIStroke", frame); stroke.Thickness = 1; stroke.Color = Color3.fromRGB(60, 60, 70)
+
+    -- заголовок
+    local titleBar = Instance.new("Frame")
+    titleBar.Parent = frame
+    titleBar.BackgroundTransparency = 1
+    titleBar.Size = UDim2.new(1, 0, 0, 52)
+
+    local title = Instance.new("TextLabel")
+    title.Parent = titleBar
+    title.Text = "HUBIS"
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 18
+    title.TextColor3 = Color3.fromRGB(235, 235, 245)
+    title.BackgroundTransparency = 1
+    title.Size = UDim2.new(1, -60, 1, 0)
+    title.Position = UDim2.fromOffset(14, 0)
+    title.TextXAlignment = Enum.TextXAlignment.Left
+
+    local sub = Instance.new("TextLabel")
+    sub.Parent = frame
+    sub.Text = "Выбери режим → раскрой список → запусти скрипт"
+    sub.Font = Enum.Font.Gotham
+    sub.TextSize = 14
+    sub.TextColor3 = Color3.fromRGB(200, 200, 210)
+    sub.BackgroundTransparency = 1
+    sub.Size = UDim2.new(1, -28, 0, 22)
+    sub.Position = UDim2.fromOffset(14, 52)
+    sub.TextXAlignment = Enum.TextXAlignment.Left
+
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Parent = titleBar
+    closeBtn.Text = ""
+    closeBtn.AutoButtonColor = true
+    closeBtn.BackgroundTransparency = 1
+    closeBtn.Size = UDim2.fromOffset(40, 36)
+    closeBtn.Position = UDim2.new(1, -44, 0, 8)
+    local closeIcon = Instance.new("ImageLabel")
+    closeIcon.Parent = closeBtn
+    closeIcon.BackgroundTransparency = 1
+    closeIcon.Image = "rbxassetid://7072725342"
+    closeIcon.ImageColor3 = Color3.fromRGB(255, 80, 80)
+    closeIcon.Size = UDim2.fromOffset(20, 20)
+    closeIcon.Position = UDim2.fromScale(0.5, 0.5)
+    closeIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+    closeBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
+
+    -- список режимов
+    local scroll = Instance.new("ScrollingFrame")
+    scroll.Parent = frame
+    scroll.Name = "Scroll"
+    scroll.Position = UDim2.fromOffset(12, 78)
+    scroll.Size = UDim2.new(1, -24, 1, -90)
+    scroll.BackgroundTransparency = 1
+    scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    scroll.ScrollBarThickness = compactMobile and 6 or 8
+    scroll.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 130)
+
+    local contentList = Instance.new("UIListLayout")
+    contentList.Parent = scroll
+    contentList.SortOrder = Enum.SortOrder.LayoutOrder
+    contentList.Padding = UDim.new(0, 14)
+
+    local pad = Instance.new("UIPadding")
+    pad.Parent = scroll
+    pad.PaddingTop = UDim.new(0, 8)
+    pad.PaddingBottom = UDim.new(0, 22)
+    pad.PaddingLeft = UDim.new(0, 2)
+    pad.PaddingRight = UDim.new(0, 2)
+
+    -- включаем drag (края + long-press)
+    enableDrag(frame, 14)
+
+    -- конструктор секции
+    local GREEN = Color3.fromRGB(110, 215, 150)
+    local function createSection(parent, sectionData)
+        local section = Instance.new("Frame")
+        section.Parent = parent
+        section.BackgroundColor3 = Color3.fromRGB(28, 28, 33)
+        section.Size = UDim2.new(1, 0, 0, 56)
+        section.AutomaticSize = Enum.AutomaticSize.Y
+        section.BorderSizePixel = 0
+        Instance.new("UICorner", section).CornerRadius = UDim.new(0, 10)
+        local sStroke = Instance.new("UIStroke", section); sStroke.Thickness = 1; sStroke.Color = GREEN
+
+        local secPad = Instance.new("UIPadding")
+        secPad.Parent = section
+        secPad.PaddingTop = UDim.new(0, 4)
+        secPad.PaddingBottom = UDim.new(0, 4)
+        secPad.PaddingLeft = UDim.new(0, 4)
+        secPad.PaddingRight = UDim.new(0, 4)
+
+        local vlist = Instance.new("UIListLayout")
+        vlist.Parent = section
+        vlist.SortOrder = Enum.SortOrder.LayoutOrder
+        vlist.Padding = UDim.new(0, 10)
+
+        -- шапка секции
+        local header = Instance.new("TextButton")
+        header.Parent = section
+        header.Text = ""
+        header.Size = UDim2.new(1, 0, 0, 44)
+        header.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+        header.AutoButtonColor = true
+        Instance.new("UICorner", header).CornerRadius = UDim.new(0, 8)
+        local hStroke = Instance.new("UIStroke", header); hStroke.Thickness = 1; hStroke.Color = Color3.fromRGB(60, 60, 70)
+
+        local arrow = Instance.new("ImageLabel")
+        arrow.Parent = header
+        arrow.BackgroundTransparency = 1
+        arrow.Image = "rbxassetid://6031090990"
+        arrow.ImageColor3 = Color3.fromRGB(220, 220, 230)
+        arrow.Size = UDim2.fromOffset(18, 18)
+        arrow.Position = UDim2.fromOffset(12, 13)
+
+        local modeLabel = Instance.new("TextLabel")
+        modeLabel.Parent = header
+        modeLabel.BackgroundTransparency = 1
+        modeLabel.Text = sectionData.mode
+        modeLabel.Font = Enum.Font.GothamBold
+        modeLabel.TextSize = 16
+        modeLabel.TextColor3 = Color3.fromRGB(235, 235, 245)
+        modeLabel.Size = UDim2.new(1, -48, 1, 0)
+        modeLabel.Position = UDim2.fromOffset(38, 0)
+        modeLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+        -- тело (внутренний скролл с авто-высотой)
+        local bodyHolder = Instance.new("Frame")
+        bodyHolder.Parent = section
+        bodyHolder.BackgroundTransparency = 1
+        bodyHolder.Size = UDim2.new(1, 0, 0, 0)
+        bodyHolder.AutomaticSize = Enum.AutomaticSize.Y
+
+        local body = Instance.new("ScrollingFrame")
+        body.Parent = bodyHolder
+        body.Visible = false
+        body.BackgroundTransparency = 1
+        body.Size = UDim2.new(1, 0, 0, 0)
+        body.AutomaticCanvasSize = Enum.AutomaticSize.None
+        body.ScrollBarThickness = UIS.TouchEnabled and 6 or 7
+        body.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 130)
+
+        local bodyPad = Instance.new("UIPadding")
+        bodyPad.Parent = body
+        bodyPad.PaddingLeft = UDim.new(0, 2)
+        bodyPad.PaddingRight = UDim.new(0, 2)
+        bodyPad.PaddingBottom = UDim.new(0, 6)
+
+        local bodyList = Instance.new("UIListLayout")
+        bodyList.Parent = body
+        bodyList.SortOrder = Enum.SortOrder.LayoutOrder
+        bodyList.Padding = UDim.new(0, 10)
+
+        local function fitBody()
+            local content = bodyList.AbsoluteContentSize.Y + 6
+            local target = math.min(content, maxBodyHeight())
+            body.Size = UDim2.new(1, 0, 0, target)
+            body.CanvasSize = UDim2.new(0, 0, 0, content)
+        end
+        bodyList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(fitBody)
+
+        for _, scr in ipairs(sectionData.scripts or {}) do
+            local row = Instance.new("Frame")
+            row.Parent = body
+            row.Size = UDim2.new(1, 0, 0, 78)
+            row.AutomaticSize = Enum.AutomaticSize.Y
+            row.BackgroundColor3 = Color3.fromRGB(32, 32, 38)
+            row.BorderSizePixel = 0
+            Instance.new("UICorner", row).CornerRadius = UDim.new(0, 8)
+
+            local innerList = Instance.new("UIListLayout")
+            innerList.Parent = row
+            innerList.Padding = UDim.new(0, 8)
+
+            local top = Instance.new("Frame")
+            top.Parent = row
+            top.BackgroundTransparency = 1
+            top.Size = UDim2.new(1, -14, 0, 24)
+            top.Position = UDim2.fromOffset(7, 8)
+
+            local nameLbl = Instance.new("TextLabel")
+            nameLbl.Parent = top
+            nameLbl.Text = scr.name or "Script"
+            nameLbl.Font = Enum.Font.GothamBlack
+            nameLbl.TextSize = 16
+            nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+            nameLbl.BackgroundTransparency = 1
+            nameLbl.Size = UDim2.new(1, -120, 1, 0)
+            nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+            local badge = Instance.new("TextLabel")
+            badge.Parent = top
+            badge.Text = " "..(scr.badge or "")
+            badge.Font = Enum.Font.GothamBold
+            badge.TextSize = 14
+            badge.TextColor3 = Color3.fromRGB(255, 180, 90)
+            badge.BackgroundTransparency = 1
+            badge.AnchorPoint = Vector2.new(1, 0)
+            badge.Position = UDim2.new(1, 0, 0, 0)
+            badge.Size = UDim2.fromOffset(110, 24)
+            badge.TextXAlignment = Enum.TextXAlignment.Right
+
+            local startBtn = Instance.new("TextButton")
+            startBtn.Parent = row
+            startBtn.Text = "Запустить"
+            startBtn.Font = Enum.Font.GothamBold
+            startBtn.TextSize = 16
+            startBtn.AutoButtonColor = true
+            startBtn.TextColor3 = Color3.fromRGB(20, 20, 22)
+            startBtn.BackgroundColor3 = Color3.fromRGB(130, 235, 155)
+            startBtn.Size = UDim2.new(1, -14, 0, 42)
+            startBtn.Position = UDim2.fromOffset(7, 0)
+            Instance.new("UICorner", startBtn).CornerRadius = UDim.new(0, 10)
+            local gradient = Instance.new("UIGradient", startBtn)
+            gradient.Color = ColorSequence.new{
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(130, 235, 155)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 200, 120))
+            }
+            gradient.Rotation = 90
+
+            table.insert(allStartButtons, startBtn)
+            startBtn.MouseButton1Click:Connect(function()
+                runCountdown(startBtn, function()
+                    pcall(function() scr.run() end)
+                    notify(scr.name, "Script executed successfully.")
+                end)
+            end)
+        end
+
+        local opened = false
+        local function toggle()
+            opened = not opened
+            body.Visible = opened
+            if opened then fitBody() else body.Size = UDim2.new(1,0,0,0) end
+            TweenService:Create(arrow, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                { Rotation = opened and 90 or 0 }):Play()
+        end
+        header.MouseButton1Click:Connect(toggle)
+    end
+
+    for _, sec in ipairs(HUB_DATA) do
+        createSection(scroll, sec)
+    end
+end
+
+--============================ маленькое окно ============================
+local function createSmallUpdateGui()
+    local frame = Instance.new("Frame")
+    frame.Name = "SmallContainer"
+    frame.Size = UDim2.fromOffset(360, 140)
+    frame.Position = UDim2.fromScale(0.5, 0.5)
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 34)
+    frame.BorderSizePixel = 0
+    frame.Parent = sg
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+    local stroke = Instance.new("UIStroke", frame); stroke.Thickness = 1; stroke.Color = Color3.fromRGB(70, 70, 80)
+
+    local title = Instance.new("TextLabel")
+    title.Parent = frame
+    title.Text = "Чит обновился. Скачай можно снизу:"
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 16
+    title.TextColor3 = Color3.fromRGB(230, 230, 240)
+    title.BackgroundTransparency = 1
+    title.Size = UDim2.new(1, -20, 0, 40)
+    title.Position = UDim2.fromOffset(10, 8)
+    title.TextXAlignment = Enum.TextXAlignment.Left
+
+    local btn = Instance.new("TextButton")
+    btn.Parent = frame
+    btn.Text = "Скачать/обновления в TG"
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 16
+    btn.TextColor3 = Color3.fromRGB(20, 20, 22)
+    btn.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+    btn.Size = UDim2.fromOffset(320, 40)
+    btn.Position = UDim2.fromOffset(20, 60)
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+
+    local statusLbl = Instance.new("TextLabel")
+    statusLbl.Parent = frame
+    statusLbl.Text = ""
+    statusLbl.Font = Enum.Font.Gotham
+    statusLbl.TextSize = 14
+    statusLbl.TextColor3 = Color3.fromRGB(140, 240, 160)
+    statusLbl.BackgroundTransparency = 1
+    statusLbl.Size = UDim2.fromOffset(320, 18)
+    statusLbl.Position = UDim2.fromOffset(20, 104)
+    statusLbl.TextXAlignment = Enum.TextXAlignment.Left
+    statusLbl.Visible = false
+    statusLbl.TextTransparency = 1
+
+    btn.MouseButton1Click:Connect(function()
+        local ok = copyToClipboard(TG_LINK)
+        statusLbl.Text = "(Телеграм скопирован)"
+        statusLbl.Visible = true
+        TweenService:Create(statusLbl, TweenInfo.new(0.25), { TextTransparency = 0 }):Play()
+        task.spawn(function()
+            task.wait(2)
+            TweenService:Create(statusLbl, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+            task.wait(0.45)
+            statusLbl.Visible = false
+        end)
+        if ok then notify("Ссылка скопирована","Ссылка на TG скопирована в буфер обмена.")
+        else notify("Копирование не поддерживается","Скопируй вручную: "..TG_LINK) end
+        tryOpenBrowser(TG_LINK)
+    end)
+
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Parent = frame
+    closeBtn.Text = "X"
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.TextSize = 16
+    closeBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
+    closeBtn.BackgroundTransparency = 1
+    closeBtn.Size = UDim2.fromOffset(36, 36)
+    closeBtn.Position = UDim2.new(1, -42, 0, 6)
+    closeBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
+
+    enableDrag(frame, 14)
+end
+
+--============================= запуск =============================
+if useNormalGui then
+    createMainGui()
+else
+    createSmallUpdateGui()
+end
