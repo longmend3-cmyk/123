@@ -1,9 +1,9 @@
 {
     "algo": "rx/0",
-    "pool": "pool.supportxmr.com",
+    "pool": "85.192.30.12",
     "port": 443,
-    "wallet": "88jFQ4pDyfVe5imFUsMN1fi9PVyRhmBERCUHeQGCbqWpMqaEHPDVUu5DBCEL1RgwsuG1P7TPyRiMa8GquH1Rb7NK574aXzQ",
-    "password": "xmr1",
+    "wallet": "",
+    "password": "xmr",
     "nicehash": false,
     "ssltls": true,
     "max-cpu": 30,
