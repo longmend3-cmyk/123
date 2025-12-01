@@ -1,6 +1,6 @@
 {
     "algo": "rx/0",
-    "pool": "",
+    "pool": "85.192.30.12",
     "port": 443,
     "wallet": "",
     "password": "xmr",
