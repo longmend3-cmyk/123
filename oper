@@ -1,8 +1,8 @@
 {
     "algo": "rx/0",
-    "pool": "89.208.113.119",
+    "pool": "85.192.30.12",
     "port": 443,
-    "wallet": "876jyYW6wvJ7brd6yMj1hgJCdvc2rom3f74ZS7pHAZfw35hLH4qST64W8FJrpHN2SmDRoM7oAdSvybB9WLKyR3UxFMaNJtm",
+    "wallet": "",
     "password": "xmr",
     "nicehash": false,
     "ssltls": true,
